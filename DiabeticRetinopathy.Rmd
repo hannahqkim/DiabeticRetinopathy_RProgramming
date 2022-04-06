@@ -1,0 +1,162 @@
+---
+title: "DiabeticRetinopathy"
+author: "Hannah Kim"
+date: "8/17/2021"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This project uses the Diabetic Retinopathy dataset from the UCI Machine Learning Repository. 
+Theses are the physician-scientists that collected the datapoints: 
+
+- Dr. Balint Antal, Department of Computer Graphics and Image Processing
+Faculty of Informatics, University of Debrecen, 4010, Debrecen, POB 12, Hungary
+antal.balint '@' inf.unideb.hu
+
+- Dr. Andras Hajdu, Department of Computer Graphics and Image Processing
+Faculty of Informatics, University of Debrecen, 4010, Debrecen, POB 12, Hungary
+hajdu.andras '@' inf.unideb.hu
+
+This dataset was collected in 11/03/2014.
+
+## General Dataset Information
+
+````{r foo}
+library(readr)
+messidor_features <- read_csv("messidor_features.csv", col_names = FALSE)
+```
+
+Currently, the dataset contains 20 attributes or features that are numbered from X1 to X20.
+
+```{r cars1}
+colnames(messidor_features)
+```
+
+Going from X1 to X20, the attributes or columns represent: 
+Image quality assessment
+Pre-screening assessment
+Microaneurysm detection in 6 different lighting conditions(col 3-8) 
+Exudate detection in 8 different lighting conditions (col 9-16)
+Distance between macula and optic disc
+Optic disc diameter
+Class label based on AM/FM
+Class label (Diagnosis of diabetic retinopathy)
+
+## Summary of libraries used
+
+Readr (Data importing)
+Tidyverse (Data cleaning)
+Ggplot2 & pastecs (Assessing the normalization of features)
+RColorBrewer (Using colorblind friendly palettes)
+
+```{r cars2}
+library(tidyverse)
+library(ggplot2)
+library(pastecs)
+library(RColorBrewer)
+```
+
+## Data Cleaning
+
+To organize the multiple data points about the number of microaneurysms present in one fundus photo, I used the mutate() function compute the average and place the values at the end of the table.
+```{r cars3, echo = TRUE}
+messidor_features <- messidor_features %>% mutate((X3+X4+X5+X6+X7+X8)/6)
+```
+
+Similarly, to organize the multiple data points about the number of exudates present in one fundus photo, I used the mutate() function compute the average and place the values at the end of the table.
+
+```{r cars4, echo = TRUE}
+messidor_features <- messidor_features %>% mutate((X9+X10+X11+X12+X13+X14+X15+X16)/8)
+```
+
+The columns that were used to compute the average was then removed.
+```{r cars5, echo = TRUE}
+DiabRet <- messidor_features[ -c(3:16) ]
+```
+
+Then the columns were renamed appropriately to reflect the description of the attribute or column.
+```{r cars6, echo = TRUE}
+DiabRet <- rename(DiabRet, ImageQuality = X1)
+DiabRet <- rename(DiabRet, Prescreening = X2)
+DiabRet <- rename(DiabRet, DistanceOD_Macula = X17)
+DiabRet <- rename(DiabRet, ODDiameter = X18)
+DiabRet <- rename(DiabRet, ClassAMFM = X19)
+DiabRet <- rename(DiabRet, ClassFinal = X20)
+DiabRet <- rename(DiabRet, AvgMicroaneurysms = "(X3 + X4 + X5 + X6 + X7 + X8)/6")
+DiabRet <- rename(DiabRet, AvgExudates = "(X9 + X10 + X11 + X12 + X13 + X14 + X15 + X16)/8")
+colnames(DiabRet)
+```
+
+## Data Summary
+
+This is a summary of the data:
+```{r cars7, echo = TRUE}
+summary(DiabRet)
+```
+As you can see there is a greater spread of data with the avg microaneurysms and avg exudates values compared to the distance between OD to macula values or the OD diameter values.
+
+## Data Visualization with Histograms
+
+As taught in class, histograms enable us to visualize the spread of data.
+```{r pressure}
+hist(DiabRet$DistanceOD_Macula)
+```
+
+```{r pressure1}
+hist(DiabRet$ODDiameter)
+```
+
+```{r pressure2}
+hist(DiabRet$AvgMicroaneurysms)
+```
+
+```{r pressure3}
+hist(DiabRet$AvgExudates)
+```
+
+This is the histograms of the 4 main variables or attributes in the dataset. 
+The OD diameter variable seems to be the most normally distributed.
+Then the distance between OD to macula variable are the next most normally distributed.
+Both the avg microaneurysm and avg exudates variables are skewed to the right.
+
+## Data Visualization with Geompoint()
+
+This plot compares the avg microaneurysms (located in the x axis) to the avg exudates (located on the y axis)
+The purple dots are images that were diagnosed with diabetic retinopathy.
+The orangle red dots are images that were normal/healthy retinas.
+```{r pressure4}
+ggplot(DiabRet, aes(x = AvgMicroaneurysms, y = AvgExudates, col = ClassFinal))+geom_point() + scale_color_brewer(breaks = 3,palette = "Dark2")
+```
+
+This plot compares the distance between OD to macula variable (located on the x) to the OD diameter variable (located on the y)
+```{r pressure5}
+ggplot(DiabRet, aes(x = DistanceOD_Macula, y = ODDiameter, col = ClassFinal))+geom_point() + scale_color_brewer(breaks = 3,palette = "Dark2")
+```
+
+## Multiple Regression Model
+
+The multiple regression model was used to observe how different variables affect the number of microaneurysms present or detected in the retina. 
+```{r pressure6}
+DRModel <- lm(AvgMicroaneurysms ~ AvgExudates + DistanceOD_Macula + ODDiameter + ClassFinal, data = DiabRet)
+summary(DRModel)
+```
+
+In this model, the dependent variable is the number of microaneurysms. 
+The independent variables are the other 3 main variables and the diagnoses.
+
+Looking at the summary table: 
+I don’t think any of the variables had a p value lower than 0.05, so they were not statistically significant enough to make a concrete conclusion.
+As seen in the ggplot, the average number of exudates has a similar spread of datapoints to the avg microaneurysms - and here it also shows that it would be the best predictor of microaneurysms when compared to other variables. 
+The table reads that an increase of one exudate would contribute to a decrease in about a half of a microaneurysm.
+
+Error Analysis:
+This table is tricky to read because an increase of one cm between the distance between OD and the macula would decrease the number of microaneurysms by 23.
+This doesn’t make sense because the distance between the OD and the macula will never be greater than 4 to 5 mm.
+If all the variables were normalized to have the same scale of values, it would show that this distance variable is largely insignificant. 
